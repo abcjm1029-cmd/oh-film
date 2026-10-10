@@ -491,26 +491,43 @@
 
     .reels{
       display:grid;
-      grid-template-columns:repeat(4,1fr);
+      grid-template-columns:repeat(4,minmax(0,1fr));
       gap:14px;
+      align-items:start;
     }
 
     .reel-card{
-      position:relative;
-      aspect-ratio:9/16;
+      position:relative !important;
+      display:block !important;
+      width:100% !important;
+      min-width:0 !important;
+      height:auto !important;
+      overflow:hidden !important;
       border-radius:28px;
-      overflow:hidden;
       background:#151515;
       transform:translateZ(0);
+      isolation:isolate;
+    }
+
+    .reel-card::before{
+      content:"";
+      display:block;
+      width:100%;
+      padding-top:177.7777778%;
     }
 
     .reel-card img{
-      position:absolute;
-      inset:0;
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      object-position:center center;
+      position:absolute !important;
+      z-index:1;
+      inset:0 !important;
+      display:block !important;
+      width:100% !important;
+      height:100% !important;
+      max-width:none !important;
+      object-fit:cover !important;
+      object-position:50% 50% !important;
+      margin:0 !important;
+      padding:0 !important;
       transition:transform .8s var(--ease), filter .5s;
     }
 
@@ -520,25 +537,38 @@
     }
 
     .reel-info{
-      position:absolute;
-      z-index:2;
-      inset:auto 0 0;
-      padding:54px 22px 22px;
-      background:linear-gradient(transparent,rgba(0,0,0,.88));
+      position:absolute !important;
+      z-index:3;
+      left:0;
+      right:0;
+      bottom:0;
+      padding:64px 22px 22px;
+      background:linear-gradient(
+        to bottom,
+        rgba(0,0,0,0),
+        rgba(0,0,0,.18) 20%,
+        rgba(0,0,0,.88) 100%
+      );
+      pointer-events:none;
     }
 
     .reel-info small{
+      display:block;
       color:#c7c7cc;
-      letter-spacing:.1em;
+      letter-spacing:.13em;
       text-transform:uppercase;
+      font-size:10px;
+      font-weight:650;
     }
 
     .reel-info strong{
       display:-webkit-box;
-      margin-top:5px;
+      margin-top:7px;
+      color:#fff;
       font-size:17px;
-      line-height:1.3;
-      letter-spacing:-.02em;
+      font-weight:700;
+      line-height:1.28;
+      letter-spacing:-.025em;
       overflow:hidden;
       -webkit-box-orient:vertical;
       -webkit-line-clamp:2;
@@ -657,7 +687,7 @@
     @media (max-width:980px){
       .feature-grid{grid-template-columns:1fr;gap:38px}
       .service-grid{grid-template-columns:1fr}
-      .reels{grid-template-columns:repeat(2,1fr)}
+      .reels{grid-template-columns:repeat(2,minmax(0,1fr))}
       .portfolio-top{display:block}
       .portfolio-top p{margin-top:18px}
     }
@@ -834,8 +864,8 @@
             <h2>Latest films.</h2>
           </div>
           <p>
-            현재는 샘플 썸네일입니다.
-            이후 <b>@1.0_life</b> 릴스 데이터를 API로 연결하면 최신 작업물이 자동으로 이 영역에 갱신되도록 만들 수 있습니다.
+            <b>@1.0_life</b>에 업로드한 최신 영상이 Instagram API를 통해 자동으로 동기화됩니다.
+            모든 작업은 동일한 9:16 포트폴리오 카드로 정리됩니다.
           </p>
         </div>
 
@@ -957,7 +987,7 @@
 
       reelsEl.innerHTML = '';
 
-      items.slice(0, 8).forEach(item => {
+      items.slice(0, 8).forEach((item, index) => {
         const card = document.createElement('a');
         card.className = 'reel-card';
         card.href = item.permalink || 'https://www.instagram.com/1.0_life/';
@@ -968,6 +998,19 @@
         image.src = item.thumbnail_url || item.media_url || '';
         image.alt = item.caption ? item.caption.slice(0, 80) : 'OH FILM Instagram Reel';
 
+        // CSS 캐시/충돌이 있어도 세로 크롭을 강제
+        card.style.position = 'relative';
+        card.style.display = 'block';
+        card.style.width = '100%';
+        card.style.overflow = 'hidden';
+
+        image.style.position = 'absolute';
+        image.style.inset = '0';
+        image.style.width = '100%';
+        image.style.height = '100%';
+        image.style.objectFit = 'cover';
+        image.style.objectPosition = 'center';
+
         const info = document.createElement('div');
         info.className = 'reel-info';
 
@@ -976,49 +1019,48 @@
 
         const strong = document.createElement('strong');
 
-        // 캡션을 카드용 제목처럼 정리
+        // Instagram 캡션을 짧은 포트폴리오 제목으로 변환
         const makeReelTitle = (caption, timestamp, index) => {
           const fallback = timestamp
             ? `Film ${new Date(timestamp).toLocaleDateString('ko-KR', {
-                year:'numeric',
+                year:'2-digit',
                 month:'2-digit',
                 day:'2-digit'
               }).replace(/\.\s?/g, '.').replace(/\.$/, '')}`
             : `OH FILM ${String(index + 1).padStart(2, '0')}`;
 
-          if (!caption) return fallback;
+          if (!caption || !caption.trim()) return fallback;
 
-          // 줄 단위로 나눈 뒤 해시태그/멘션/URL만 있는 줄 제거
-          const lines = caption
+          const rawLines = caption
             .split(/\n+/)
             .map(line => line.trim())
-            .filter(Boolean)
-            .filter(line => !/^(#\S+\s*)+$/.test(line))
-            .filter(line => !/^(@\S+\s*)+$/.test(line))
-            .filter(line => !/^https?:\/\//i.test(line));
+            .filter(Boolean);
 
-          let title = lines[0] || caption;
+          let title = rawLines.find(line =>
+            !/^(#[^\s#]+\s*)+$/.test(line) &&
+            !/^(@[^\s@]+\s*)+$/.test(line) &&
+            !/^https?:\/\//i.test(line)
+          ) || rawLines[0] || '';
 
-          // URL 제거
-          title = title.replace(/https?:\/\/\S+/gi, '');
-
-          // 해시태그 / 멘션 제거
-          title = title.replace(/(^|\s)[#@][^\s#@]+/g, ' ');
-
-          // 앞뒤 장식 문자, 이모지 비슷한 기호 정리
           title = title
-            .replace(/^[\s\-–—|·•:;,."'“”‘’()[\]{}]+/, '')
-            .replace(/[\s\-–—|·•:;,."'“”‘’()[\]{}]+$/, '')
+            .replace(/https?:\/\/\S+/gi, ' ')
+            .replace(/(^|\s)#[^\s#]+/g, ' ')
+            .replace(/(^|\s)@[^\s@]+/g, ' ');
+
+          title = title
+            .replace(/^[\s\-–—|·•:;,."'“”‘’()[\]{}<>]+/, '')
+            .replace(/[\s\-–—|·•:;,."'“”‘’()[\]{}<>]+$/, '')
             .replace(/\s+/g, ' ')
             .trim();
 
-          // 너무 길면 첫 문장 위주로 사용
-          const sentence = title.split(/(?<=[.!?])\s+/)[0];
-          if (sentence && sentence.length <= 34) title = sentence;
+          const firstSentence = title.split(/(?<=[.!?])\s+/)[0]?.trim();
+          if (firstSentence && firstSentence.length <= 32) {
+            title = firstSentence;
+          }
 
-          // 카드에서 읽기 좋은 길이로 제한
-          if (title.length > 34) {
-            title = title.slice(0, 34).trim() + '…';
+          const maxLength = 30;
+          if (title.length > maxLength) {
+            title = title.slice(0, maxLength).trimEnd() + '…';
           }
 
           return title || fallback;
@@ -1027,7 +1069,7 @@
         strong.textContent = makeReelTitle(
           item.caption,
           item.timestamp,
-          items.indexOf(item)
+          index
         );
 
         info.appendChild(small);
