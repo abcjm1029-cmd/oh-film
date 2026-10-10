@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content="OH FILM — Cinematic video production." />
   <title>OH FILM — Cinematic Production</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
   <style>
     :root{
@@ -826,42 +829,14 @@
           </p>
         </div>
 
-        <div class="reels stagger">
-          <a class="reel-card" href="https://www.instagram.com/1.0_life/" target="_blank" rel="noopener">
-            <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=900&q=90" alt="">
-            <div class="reel-info">
-              <small>Automotive</small>
-              <strong>Night Run</strong>
-            </div>
-          </a>
-
-          <a class="reel-card" href="https://www.instagram.com/1.0_life/" target="_blank" rel="noopener">
-            <img src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=90" alt="">
-            <div class="reel-info">
-              <small>Rolling Shot</small>
-              <strong>Motion Study</strong>
-            </div>
-          </a>
-
-          <a class="reel-card" href="https://www.instagram.com/1.0_life/" target="_blank" rel="noopener">
-            <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=90" alt="">
-            <div class="reel-info">
-              <small>Lifestyle</small>
-              <strong>Weekend Film</strong>
-            </div>
-          </a>
-
-          <a class="reel-card" href="https://www.instagram.com/1.0_life/" target="_blank" rel="noopener">
-            <img src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=900&q=90" alt="">
-            <div class="reel-info">
-              <small>Commercial</small>
-              <strong>Visual Story</strong>
-            </div>
-          </a>
+        <div class="reels stagger" id="instagramReels">
+          <div class="reel-card" style="display:grid;place-items:center;padding:24px;text-align:center;color:#a1a1a6;">
+            Instagram 최신 릴스를 불러오는 중입니다.
+          </div>
         </div>
 
         <div class="instagram-note">
-          <span>Live portfolio sync ready for future Instagram API integration.</span>
+          <span id="instagramStatus">Instagram API 연결 대기 중</span>
           <a href="https://www.instagram.com/1.0_life/" target="_blank" rel="noopener"><b>@1.0_life ↗</b></a>
         </div>
       </div>
@@ -951,6 +926,65 @@
   });
 
   revealTargets.forEach(el => observer.observe(el));
+
+  // Instagram Reels sync
+  // 실제 Access Token은 index.html에 넣지 말고 Vercel 환경변수 + 서버리스 API에서 사용하세요.
+  async function loadInstagramReels(){
+    const reelsEl = document.getElementById('instagramReels');
+    const statusEl = document.getElementById('instagramStatus');
+
+    try{
+      const res = await fetch('/api/instagram');
+      if(!res.ok) throw new Error('Instagram API request failed');
+
+      const data = await res.json();
+      const items = Array.isArray(data.data) ? data.data : [];
+
+      if(!items.length){
+        statusEl.textContent = '표시할 Instagram 미디어가 없습니다.';
+        return;
+      }
+
+      reelsEl.innerHTML = '';
+
+      items.slice(0, 8).forEach(item => {
+        const card = document.createElement('a');
+        card.className = 'reel-card';
+        card.href = item.permalink || 'https://www.instagram.com/1.0_life/';
+        card.target = '_blank';
+        card.rel = 'noopener';
+
+        const image = document.createElement('img');
+        image.src = item.thumbnail_url || item.media_url || '';
+        image.alt = item.caption ? item.caption.slice(0, 80) : 'OH FILM Instagram Reel';
+
+        const info = document.createElement('div');
+        info.className = 'reel-info';
+
+        const small = document.createElement('small');
+        small.textContent = 'Instagram Reel';
+
+        const strong = document.createElement('strong');
+        strong.textContent = item.caption
+          ? item.caption.replace(/\s+/g, ' ').slice(0, 42)
+          : 'Latest Film';
+
+        info.appendChild(small);
+        info.appendChild(strong);
+        card.appendChild(image);
+        card.appendChild(info);
+        reelsEl.appendChild(card);
+      });
+
+      statusEl.textContent = '@1.0_life 최신 게시물을 자동으로 불러왔습니다.';
+    }catch(err){
+      console.error(err);
+      statusEl.textContent = 'Instagram 연결 전입니다. 아래 설정을 완료하면 자동 동기화됩니다.';
+    }
+  }
+
+  loadInstagramReels();
+
 </script>
 
 </body>
